@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>مخزن الأثاث</title>
+<meta name="theme-color" content="#3B2A1F">
+<link rel="manifest" href="manifest.json">
+<style>
+  @font-face {
+    font-family: 'Tajawal';
+    src: local('Tajawal');
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body {
+    font-family: 'Segoe UI', Tahoma, 'Helvetica Neue', Arial, sans-serif;
+    background: #E8DCC8;
+    color:#3B2A1F;
+    overscroll-behavior:none;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app { display:flex; flex-direction:column; height:100vh; max-width:560px; margin:0 auto; background:#F3ECDD; box-shadow:0 0 40px rgba(0,0,0,.08); position:relative; }
+
+  /* ===== Lock screen ===== */
+  #lockScreen {
+    position:fixed; inset:0; background:#3B2A1F; z-index:999;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:#E8DCC8;
+  }
+  #lockScreen.hidden { display:none; }
+  .lock-logo { font-size:42px; margin-bottom:6px; }
+  .lock-title { font-size:22px; font-weight:700; margin-bottom:30px; letter-spacing:.5px;}
+  .pin-dots { display:flex; gap:14px; margin-bottom:34px; height:16px; }
+  .pin-dot { width:14px; height:14px; border-radius:50%; border:2px solid #A87C4F; background:transparent; transition:.15s; }
+  .pin-dot.filled { background:#A87C4F; }
+  .pin-pad { display:grid; grid-template-columns:repeat(3,72px); gap:16px; }
+  .pin-key {
+    width:72px; height:72px; border-radius:50%; border:1px solid rgba(232,220,200,.25);
+    background:rgba(232,220,200,.06); color:#E8DCC8; font-size:24px; font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pin-key:active { background:rgba(168,124,79,.4); }
+  .pin-key.empty { visibility:hidden; }
+  .lock-error { color:#D98E7A; font-size:13px; margin-top:14px; height:16px; }
+  .lock-setup-note { font-size:12px; color:#C8B9A0; margin-top:18px; text-align:center; padding:0 30px; }
+
+  /* ===== Top bar ===== */
+  header {
+    background:#3B2A1F; color:#E8DCC8; padding:16px 18px 14px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-shrink:0;
+  }
+  header .brand { display:flex; align-items:center; gap:10px; }
+  header .brand-icon {
+    width:36px; height:36px; border-radius:10px; background:#A87C4F;
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+  }
+  header h1 { font-size:17px; font-weight:700; }
+  header .sub { font-size:11px; color:#C8B9A0; margin-top:1px; }
+  #lockBtn { background:none; border:none; color:#C8B9A0; font-size:20px; padding:6px; }
+
+  /* ===== Tabs ===== */
+  nav.tabs {
+    display:flex; background:#fff; border-bottom:1px solid #E3D7BD; flex-shrink:0;
+    overflow-x:auto;
+  }
+  nav.tabs button {
+    flex:1; min-width:64px; border:none; background:none; padding:11px 4px;
+    font-size:12px; color:#8A7A63; font-weight:600; position:relative;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    white-space:nowrap;
+  }
+  nav.tabs button .ic { font-size:18px; }
+  nav.tabs button.active { color:#A87C4F; }
+  nav.tabs button.active::after {
+    content:''; position:absolute; bottom:0; left:18%; right:18%; height:3px;
+    background:#A87C4F; border-radius:3px 3px 0 0;
+  }
+
+  main { flex:1; overflow-y:auto; padding:14px 14px 90px; }
+
+  /* ===== Stat cards ===== */
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .stat-card {
+    background:#fff; border-radius:14px; padding:14px; border:1px solid #E3D7BD;
+  }
+  .stat-card .label { font-size:11.5px; color:#8A7A63; margin-bottom:6px; font-weight:600; }
+  .stat-card .value { font-size:21px; font-weight:800; color:#3B2A1F; }
+  .stat-card.profit .value { color:#6B7B4E; }
+  .stat-card.alert .value { color:#A14E3C; }
+  .stat-card.full { grid-column:1/-1; }
+
+  section.block { margin-bottom:20px; }
+  .block-title {
+    font-size:13.5px; font-weight:700; color:#3B2A1F; margin-bottom:10px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .block-title .count { font-size:11px; color:#A87C4F; font-weight:600; background:#F0E4CC; padding:2px 8px; border-radius:20px; }
+
+  /* search */
+  .search-bar {
+    display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #E3D7BD;
+    border-radius:12px; padding:10px 12px; margin-bottom:12px;
+  }
+  .search-bar input {
+    flex:1; border:none; outline:none; font-size:14px; background:none; color:#3B2A1F;
+    font-family:inherit;
+  }
+  .search-bar .ic { color:#A87C4F; font-size:16px; }
+
+  /* item card */
+  .item-card {
+    background:#fff; border:1px solid #E3D7BD; border-radius:14px; padding:13px 14px;
+    margin-bottom:9px; display:flex; align-items:center; gap:12px;
+  }
+  .item-card .item-icon {
+    width:42px; height:42px; border-radius:10px; background:#F0E4CC; color:#A87C4F;
+    display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0;
+  }
+  .item-card .info { flex:1; min-width:0; }
+  .item-card .name { font-size:14.5px; font-weight:700; color:#3B2A1F; margin-bottom:3px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item-card .meta { font-size:11.5px; color:#8A7A63; display:flex; gap:8px; flex-wrap:wrap; }
+  .item-card .meta span.qty-low { color:#A14E3C; font-weight:700; }
+  .item-card .prices { text-align:left; flex-shrink:0; }
+  .item-card .sell-price { font-size:15px; font-weight:800; color:#3B2A1F; }
+  .item-card .buy-price { font-size:10.5px; color:#A87C4F; }
+  .item-card .qty-badge {
+    font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; margin-top:4px;
+    background:#EEF0E6; color:#6B7B4E; display:inline-block;
+  }
+  .item-card .qty-badge.low { background:#F6E4DF; color:#A14E3C; }
+  .item-card .qty-badge.out { background:#A14E3C; color:#fff; }
+
+  .empty-state {
+    text-align:center; padding:50px 20px; color:#A8957A;
+  }
+  .empty-state .ic { font-size:46px; margin-bottom:10px; opacity:.6; }
+  .empty-state p { font-size:13.5px; line-height:1.6; }
+
+  /* transaction row */
+  .tx-row {
+    background:#fff; border:1px solid #E3D7BD; border-radius:12px; padding:11px 13px;
+    margin-bottom:8px; display:flex; align-items:center; gap:10px;
+  }
+  .tx-row .tx-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .tx-row .tx-dot.in { background:#6B7B4E; }
+  .tx-row .tx-dot.out { background:#A87C4F; }
+  .tx-row .tx-info { flex:1; min-width:0; }
+  .tx-row .tx-name { font-size:13.5px; font-weight:700; color:#3B2A1F; }
+  .tx-row .tx-meta { font-size:11px; color:#8A7A63; margin-top:1px; }
+  .tx-row .tx-amount { font-size:13.5px; font-weight:800; text-align:left; flex-shrink:0; }
+  .tx-row .tx-amount.profit { color:#6B7B4E; }
+  .tx-row .tx-amount.cost { color:#A14E3C; }
+  .tx-row .tx-del { background:none; border:none; color:#C8B9A0; font-size:16px; padding:4px 6px; }
+
+  /* day group label */
+  .day-label { font-size:11.5px; color:#A8957A; font-weight:700; margin:14px 0 8px; padding-right:2px;}
+  .day-label:first-child { margin-top:0; }
+
+  /* ===== FAB ===== */
+  .fab {
+    position:fixed; bottom:84px; left:50%; transform:translateX(-50%);
+    max-width:560px; width:calc(100% - 28px); z-index:50;
+  }
+  .fab-row { display:flex; gap:10px; }
+  .fab button {
+    flex:1; border:none; border-radius:14px; padding:14px; font-size:14px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; gap:7px;
+    box-shadow:0 6px 16px rgba(59,42,31,.25);
+  }
+  .fab .btn-add { background:#3B2A1F; color:#E8DCC8; }
+  .fab .btn-sell { background:#A87C4F; color:#fff; }
+
+  /* bottom nav for stock/report screens uses tabs already, FAB only on stock tab */
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(59,42,31,.55); z-index:200;
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  .modal-overlay.show { opacity:1; pointer-events:auto; }
+  .modal-sheet {
+    background:#F3ECDD; width:100%; max-width:560px; border-radius:20px 20px 0 0;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+    transform:translateY(100%); transition:transform .25s ease;
+    max-height:88vh; overflow-y:auto;
+  }
+  .modal-overlay.show .modal-sheet { transform:translateY(0); }
+  .modal-handle { width:40px; height:4px; background:#D9C9AA; border-radius:4px; margin:0 auto 16px; }
+  .modal-title { font-size:17px; font-weight:800; color:#3B2A1F; margin-bottom:4px; }
+  .modal-sub { font-size:12px; color:#8A7A63; margin-bottom:18px; }
+
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:12.5px; font-weight:700; color:#5C4A36; margin-bottom:6px; }
+  .field input, .field select {
+    width:100%; padding:13px 14px; border-radius:12px; border:1.5px solid #DECBA8;
+    font-size:15px; background:#fff; color:#3B2A1F; font-family:inherit; outline:none;
+  }
+  .field input:focus, .field select:focus { border-color:#A87C4F; }
+  .field-row { display:flex; gap:10px; }
+  .field-row .field { flex:1; }
+  .stepper { display:flex; align-items:center; gap:10px; }
+  .stepper button {
+    width:44px; height:44px; border-radius:12px; border:1.5px solid #DECBA8; background:#fff;
+    font-size:20px; color:#A87C4F; font-weight:700; flex-shrink:0;
+  }
+  .stepper input { text-align:center; flex:1; }
+
+  .modal-actions { display:flex; gap:10px; margin-top:6px; }
+  .modal-actions button {
+    flex:1; border:none; border-radius:12px; padding:14px; font-size:14.5px; font-weight:700;
+  }
+  .btn-cancel { background:#EAE0CB; color:#5C4A36; }
+  .btn-confirm { background:#3B2A1F; color:#E8DCC8; }
+  .btn-confirm.sell { background:#A87C4F; }
+  .btn-confirm.danger { background:#A14E3C; }
+
+  .profit-preview {
+    background:#F0E4CC; border-radius:12px; padding:12px 14px; margin-bottom:14px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .profit-preview .lbl { font-size:12.5px; color:#8A6A45; font-weight:600; }
+  .profit-preview .val { font-size:18px; font-weight:800; color:#A87C4F; }
+
+  /* Toast */
+  #toast {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:#3B2A1F; color:#E8DCC8; padding:12px 22px; border-radius:30px;
+    font-size:13.5px; font-weight:600; opacity:0; transition:.25s; z-index:300;
+    display:flex; align-items:center; gap:8px; box-shadow:0 8px 20px rgba(0,0,0,.25);
+    max-width:88%;
+  }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* report screen */
+  .report-period { display:flex; gap:8px; margin-bottom:16px; }
+  .report-period button {
+    flex:1; border:1.5px solid #DECBA8; background:#fff; color:#5C4A36; border-radius:11px;
+    padding:9px; font-size:12.5px; font-weight:700;
+  }
+  .report-period button.active { background:#3B2A1F; color:#E8DCC8; border-color:#3B2A1F; }
+
+  .share-btn {
+    width:100%; border:none; background:#25D366; color:#fff; border-radius:12px; padding:14px;
+    font-size:14.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    gap:8px; margin-top:6px;
+  }
+  .top-item-row {
+    display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #E3D7BD;
+    border-radius:12px; padding:10px 13px; margin-bottom:8px;
+  }
+  .top-item-row .rank {
+    width:26px; height:26px; border-radius:50%; background:#F0E4CC; color:#A87C4F;
+    font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .top-item-row .info { flex:1; }
+  .top-item-row .name { font-size:13.5px; font-weight:700; color:#3B2A1F; }
+  .top-item-row .sub { font-size:11px; color:#8A7A63; }
+  .top-item-row .amt { font-size:13.5px; font-weight:800; color:#6B7B4E; }
+
+  /* settings */
+  .settings-row {
+    background:#fff; border:1px solid #E3D7BD; border-radius:13px; padding:14px 15px;
+    margin-bottom:10px; display:flex; align-items:center; justify-content:between; gap:10px;
+  }
+  .settings-row .s-info { flex:1; }
+  .settings-row .s-title { font-size:13.5px; font-weight:700; color:#3B2A1F; }
+  .settings-row .s-sub { font-size:11.5px; color:#8A7A63; margin-top:2px; }
+  .settings-row button {
+    border:none; background:#F0E4CC; color:#A87C4F; border-radius:10px; padding:9px 14px;
+    font-size:12.5px; font-weight:700; white-space:nowrap;
+  }
+  .settings-row button.danger { background:#F6E4DF; color:#A14E3C; }
+
+  ::-webkit-scrollbar { width:0; height:0; }
+
+  @media (min-width:560px){
+    body { background:#D9C9AA; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- LOCK SCREEN -->
+  <div id="lockScreen">
+    <div class="lock-logo">🪵</div>
+    <div class="lock-title">مخزن الأثاث</div>
+    <div class="pin-dots" id="pinDots"></div>
+    <div class="pin-pad" id="pinPad"></div>
+    <div class="lock-error" id="lockError"></div>
+    <div class="lock-setup-note" id="lockSetupNote"></div>
+  </div>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🪵</div>
+      <div>
+        <h1>مخزن الأثاث</h1>
+        <div class="sub" id="headerSub">جرد وأرباح المحل</div>
+      </div>
+    </div>
+    <button id="lockBtn" title="قفل">🔒</button>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="stock" class="active"><span class="ic">📦</span>المخزون</button>
+    <button data-tab="history"><span class="ic">🧾</span>السجل</button>
+    <button data-tab="report"><span class="ic">📊</span>التقارير</button>
+    <button data-tab="settings"><span class="ic">⚙️</span>الإعدادات</button>
+  </nav>
+
+  <main id="main"></main>
+
+  <div class="fab" id="fabBar">
+    <div class="fab-row">
+      <button class="btn-add" id="btnAddStock">＋ إضافة سلعة / تزويد</button>
+      <button class="btn-sell" id="btnSell">💰 بيع</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: Add/Restock item -->
+<div class="modal-overlay" id="modalAdd">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="addModalTitle">إضافة سلعة جديدة</div>
+    <div class="modal-sub">سجّل السلعة الداخلة للمحل وسعر بيعها</div>
+
+    <div class="field">
+      <label>اسم السلعة</label>
+      <input type="text" id="inpName" placeholder="مثال: كنبة جلدية 3 مقاعد" list="itemNamesList">
+      <datalist id="itemNamesList"></datalist>
+    </div>
+
+    <div class="field">
+      <label>الكمية</label>
+      <div class="stepper">
+        <button type="button" id="qtyMinus">−</button>
+        <input type="number" id="inpQty" value="1" min="0">
+        <button type="button" id="qtyPlus">＋</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>سعر البيع (للوحدة)</label>
+      <input type="number" id="inpSell" placeholder="0" inputmode="decimal">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelAdd">إلغاء</button>
+      <button class="btn-confirm" id="confirmAdd">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Sell item -->
+<div class="modal-overlay" id="modalSell">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">تسجيل عملية بيع</div>
+    <div class="modal-sub">اختر السلعة المباعة والكمية</div>
+
+    <div class="field">
+      <label>السلعة</label>
+      <select id="selSellItem"></select>
+    </div>
+
+    <div class="field">
+      <label>الكمية المباعة</label>
+      <div class="stepper">
+        <button type="button" id="sellQtyMinus">−</button>
+        <input type="number" id="inpSellQty" value="1" min="1">
+        <button type="button" id="sellQtyPlus">＋</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>سعر البيع الفعلي (يمكن تعديله)</label>
+      <input type="number" id="inpActualSellPrice" inputmode="decimal">
+    </div>
+
+    <div class="profit-preview" id="totalPreviewBox">
+      <span class="lbl">المجموع</span>
+      <span class="val" id="profitPreviewVal">0 د.م.</span>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelSell">إلغاء</button>
+      <button class="btn-confirm sell" id="confirmSell">تأكيد البيع</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Item detail / edit -->
+<div class="modal-overlay" id="modalDetail">
+  <div class="modal-sheet" id="detailSheetContent"></div>
+</div>
+
+<!-- MODAL: Confirm delete -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="confirmTitle">تأكيد الحذف</div>
+    <div class="modal-sub" id="confirmSub">هل أنت متأكد؟ لا يمكن التراجع عن هذا الإجراء.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="confirmCancelBtn">إلغاء</button>
+      <button class="btn-confirm danger" id="confirmOkBtn">حذف</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   مخزن الأثاث — Offline-first furniture inventory manager
+   Storage: IndexedDB. Single-file PWA.
+   ============================================================ */
+
+const DB_NAME = 'furnitureStoreDB';
+const DB_VERSION = 1;
+let db;
+
+function openDB(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e)=>{
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains('items')){
+        const store = d.createObjectStore('items', {keyPath:'id'});
+        store.createIndex('name','name',{unique:false});
+      }
+      if(!d.objectStoreNames.contains('transactions')){
+        const store = d.createObjectStore('transactions', {keyPath:'id'});
+        store.createIndex('date','date',{unique:false});
+        store.createIndex('itemId','itemId',{unique:false});
+      }
+      if(!d.objectStoreNames.contains('meta')){
+        d.createObjectStore('meta', {keyPath:'key'});
+      }
+    };
+    req.onsuccess = (e)=>{ db = e.target.result; resolve(db); };
+    req.onerror = (e)=> reject(e);
+  });
+}
+
+function tx(store, mode='readonly'){
+  return db.transaction(store, mode).objectStore(store);
+}
+function dbGetAll(store){
+  return new Promise((res)=>{
+    const out=[];
+    tx(store).openCursor().onsuccess = (e)=>{
+      const cur = e.target.result;
+      if(cur){ out.push(cur.value); cur.continue(); } else res(out);
+    };
+  });
+}
+function dbPut(store, val){
+  return new Promise((res,rej)=>{
+    const r = tx(store,'readwrite').put(val);
+    r.onsuccess = ()=>res(val);
+    r.onerror = (e)=>rej(e);
+  });
+}
+function dbDelete(store, id){
+  return new Promise((res,rej)=>{
+    const r = tx(store,'readwrite').delete(id);
+    r.onsuccess = ()=>res();
+    r.onerror=(e)=>rej(e);
+  });
+}
+function dbGet(store, id){
+  return new Promise((res)=>{
+    const r = tx(store).get(id);
+    r.onsuccess = ()=>res(r.result);
+  });
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+
+let STATE = {
+  items: [],
+  transactions: [],
+  pin: null,
+  activeTab: 'stock',
+  reportPeriod: 'today',
+  searchQuery: ''
+};
+
+/* ---------- Formatting ---------- */
+function fmt(n){
+  n = Number(n)||0;
+  return n.toLocaleString('en-US', {maximumFractionDigits: n%1===0?0:2}) + ' د.م.';
+}
+function fmtPlain(n){
+  n = Number(n)||0;
+  return n.toLocaleString('en-US', {maximumFractionDigits: n%1===0?0:2});
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function dayLabel(dateStr){
+  const d = new Date(dateStr);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const that = new Date(d); that.setHours(0,0,0,0);
+  const diffDays = Math.round((today-that)/86400000);
+  if(diffDays===0) return 'اليوم';
+  if(diffDays===1) return 'الأمس';
+  return d.toLocaleDateString('ar-MA', {day:'numeric', month:'long', year:'numeric'});
+}
+function fmtTime(dateStr){
+  return new Date(dateStr).toLocaleTimeString('ar-MA', {hour:'2-digit', minute:'2-digit'});
+}
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg, icon='✓'){
+  const t = document.getElementById('toast');
+  t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   LOCK SCREEN (PIN)
+   ============================================================ */
+let pinBuffer = '';
+let pinMode = 'unlock'; // 'setup' | 'confirm' | 'unlock' | 'change-old' | 'change-new' | 'change-confirm'
+let pinTemp = '';
+
+function buildPinPad(){
+  const pad = document.getElementById('pinPad');
+  pad.innerHTML = '';
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','del'];
+  keys.forEach(k=>{
+    const btn = document.createElement('button');
+    btn.className = 'pin-key' + (k===''?' empty':'');
+    btn.textContent = k==='del' ? '⌫' : k;
+    if(k!=='') btn.addEventListener('click', ()=>onPinKey(k));
+    pad.appendChild(btn);
+  });
+}
+function renderPinDots(){
+  const dots = document.getElementById('pinDots');
+  dots.innerHTML = '';
+  for(let i=0;i<4;i++){
+    const d = document.createElement('div');
+    d.className = 'pin-dot' + (i<pinBuffer.length ? ' filled':'');
+    dots.appendChild(d);
+  }
+}
+function onPinKey(k){
+  const errEl = document.getElementById('lockError');
+  errEl.textContent='';
+  if(k==='del'){ pinBuffer = pinBuffer.slice(0,-1); renderPinDots(); return; }
+  if(pinBuffer.length>=4) return;
+  pinBuffer += k;
+  renderPinDots();
+  if(pinBuffer.length===4){
+    setTimeout(()=>handlePinComplete(), 150);
+  }
+}
+function handlePinComplete(){
+  const errEl = document.getElementById('lockError');
+  const noteEl = document.getElementById('lockSetupNote');
+  if(pinMode==='setup'){
+    pinTemp = pinBuffer; pinBuffer=''; renderPinDots();
+    pinMode='confirm';
+    noteEl.textContent = 'أعد إدخال الرمز للتأكيد';
+  } else if(pinMode==='confirm'){
+    if(pinBuffer===pinTemp){
+      STATE.pin = pinBuffer;
+      dbPut('meta', {key:'pin', value:STATE.pin}).then(()=>{
+        unlockApp();
+      });
+    } else {
+      errEl.textContent = 'الرمزان غير متطابقين، حاول مجددًا';
+      pinBuffer=''; renderPinDots();
+      pinMode='setup';
+      noteEl.textContent = 'أنشئ رمزًا من 4 أرقام لحماية بياناتك';
+    }
+  } else if(pinMode==='unlock'){
+    if(pinBuffer===STATE.pin){
+      unlockApp();
+    } else {
+      errEl.textContent = 'رمز خاطئ، حاول مجددًا';
+      pinBuffer=''; renderPinDots();
+      if(navigator.vibrate) navigator.vibrate(200);
+    }
+  } else if(pinMode==='change-old'){
+    if(pinBuffer===STATE.pin){
+      pinBuffer=''; renderPinDots();
+      pinMode='change-new';
+      noteEl.textContent='أدخل الرمز الجديد';
+    } else {
+      errEl.textContent='رمز خاطئ';
+      pinBuffer=''; renderPinDots();
+    }
+  } else if(pinMode==='change-new'){
+    pinTemp=pinBuffer; pinBuffer=''; renderPinDots();
+    pinMode='change-confirm';
+    noteEl.textContent='أعد إدخال الرمز الجديد للتأكيد';
+  } else if(pinMode==='change-confirm'){
+    if(pinBuffer===pinTemp){
+      STATE.pin = pinBuffer;
+      dbPut('meta', {key:'pin', value:STATE.pin}).then(()=>{
+        toast('تم تغيير الرمز بنجاح');
+        unlockApp();
+      });
+    } else {
+      errEl.textContent='الرمزان غير متطابقين';
+      pinBuffer=''; renderPinDots();
+      pinMode='change-new';
+      noteEl.textContent='أدخل الرمز الجديد';
+    }
+  }
+}
+function showLock(mode){
+  pinMode = mode;
+  pinBuffer=''; pinTemp='';
+  renderPinDots();
+  document.getElementById('lockError').textContent='';
+  const noteEl = document.getElementById('lockSetupNote');
+  if(mode==='setup') noteEl.textContent = 'أنشئ رمزًا من 4 أرقام لحماية بياناتك';
+  else if(mode==='change-old') noteEl.textContent = 'أدخل الرمز الحالي';
+  else noteEl.textContent = '';
+  document.getElementById('lockScreen').classList.remove('hidden');
+}
+function unlockApp(){
+  document.getElementById('lockScreen').classList.add('hidden');
+  render();
+}
+document.getElementById('lockBtn').addEventListener('click', ()=>{
+  if(STATE.pin) showLock('unlock');
+});
+
+/* ============================================================
+   RENDER: TABS
+   ============================================================ */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    STATE.activeTab = btn.dataset.tab;
+    document.getElementById('fabBar').style.display = STATE.activeTab==='stock' ? 'block' : 'none';
+    render();
+  });
+});
+
+function render(){
+  const main = document.getElementById('main');
+  if(STATE.activeTab==='stock') renderStock(main);
+  else if(STATE.activeTab==='history') renderHistory(main);
+  else if(STATE.activeTab==='report') renderReport(main);
+  else if(STATE.activeTab==='settings') renderSettings(main);
+  updateHeaderSub();
+}
+
+function updateHeaderSub(){
+  const totalItems = STATE.items.reduce((s,i)=>s+i.qty,0);
+  document.getElementById('headerSub').textContent = `${STATE.items.length} سلعة · ${totalItems} وحدة في المخزون`;
+}
+
+/* ---------- STOCK TAB ---------- */
+function computePotentialRevenue(){
+  return STATE.items.reduce((s,i)=> s + i.qty*i.sellPrice, 0);
+}
+function computeTotalUnits(){
+  return STATE.items.reduce((s,i)=> s + i.qty, 0);
+}
+
+function renderStock(main){
+  const lowCount = STATE.items.filter(i=>i.qty>0 && i.qty<=3).length;
+  const outCount = STATE.items.filter(i=>i.qty===0).length;
+
+  let html = `
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">قيمة المخزون بسعر البيع</div>
+      <div class="value">${fmt(computePotentialRevenue())}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">عدد الوحدات المتوفرة</div>
+      <div class="value">${computeTotalUnits()}</div>
+    </div>
+  </div>
+  <div class="search-bar">
+    <span class="ic">🔎</span>
+    <input type="text" id="stockSearch" placeholder="بحث عن سلعة..." value="${escapeHtml(STATE.searchQuery)}">
+  </div>
+  `;
+
+  let filtered = STATE.items.filter(i=> i.name.toLowerCase().includes(STATE.searchQuery.toLowerCase()));
+  // Order: out of stock first, then low stock, then everything else — alphabetical within each group
+  filtered.sort((a,b)=>{
+    const rank = (i)=> i.qty===0 ? 0 : (i.qty<=3 ? 1 : 2);
+    const ra = rank(a), rb = rank(b);
+    if(ra!==rb) return ra-rb;
+    return a.name.localeCompare(b.name,'ar');
+  });
+
+  if(filtered.length===0){
+    html += `<div class="empty-state">
+      <div class="ic">📦</div>
+      <p>${STATE.items.length===0 ? 'لا توجد سلع مسجلة بعد.<br>اضغط على "إضافة سلعة" لتبدأ.' : 'لا توجد نتائج لهذا البحث'}</p>
+    </div>`;
+  } else {
+    html += `<section class="block"><div class="block-title">جميع السلع <span class="count">${filtered.length}</span></div>`;
+    filtered.forEach(item=>{
+      const qtyClass = item.qty===0 ? 'out' : (item.qty<=3 ? 'low' : '');
+      const qtyText = item.qty===0 ? 'نفذ المخزون' : `${item.qty} متوفر`;
+      html += `
+      <div class="item-card" data-id="${item.id}">
+        <div class="item-icon">🪑</div>
+        <div class="info">
+          <div class="name">${escapeHtml(item.name)}</div>
+          <div class="meta">
+            <span>سعر البيع: ${fmtPlain(item.sellPrice)} د.م.</span>
+          </div>
+        </div>
+        <div class="prices">
+          <div class="sell-price">${fmtPlain(item.sellPrice)}</div>
+          <div class="qty-badge ${qtyClass}">${qtyText}</div>
+        </div>
+      </div>`;
+    });
+    html += `</section>`;
+  }
+
+  main.innerHTML = html;
+  document.getElementById('stockSearch').addEventListener('input', (e)=>{
+    STATE.searchQuery = e.target.value;
+    renderStock(main);
+    document.getElementById('stockSearch').focus();
+    // restore cursor at end
+    const el = document.getElementById('stockSearch');
+    el.selectionStart = el.selectionEnd = el.value.length;
+  });
+  main.querySelectorAll('.item-card').forEach(card=>{
+    card.addEventListener('click', ()=> openItemDetail(card.dataset.id));
+  });
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- ITEM DETAIL MODAL ---------- */
+function openItemDetail(id){
+  const item = STATE.items.find(i=>i.id===id);
+  if(!item) return;
+  const sheet = document.getElementById('detailSheetContent');
+  const hasBuyPrice = item.buyPrice!=null && item.buyPrice>0;
+  sheet.innerHTML = `
+    <div class="modal-handle"></div>
+    <div class="modal-title">${escapeHtml(item.name)}</div>
+    <div class="modal-sub">تفاصيل السلعة وتعديلها</div>
+
+    <div class="stats-grid">
+      <div class="stat-card full"><div class="label">الكمية المتوفرة</div><div class="value">${item.qty}</div></div>
+    </div>
+
+    <div class="field">
+      <label>اسم السلعة</label>
+      <input type="text" id="editName" value="${escapeHtml(item.name)}">
+    </div>
+    <div class="field">
+      <label>الكمية الحالية</label>
+      <div class="stepper">
+        <button type="button" id="editQtyMinus">−</button>
+        <input type="number" id="editQty" value="${item.qty}" min="0">
+        <button type="button" id="editQtyPlus">＋</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>سعر البيع</label>
+      <input type="number" id="editSell" value="${item.sellPrice}" inputmode="decimal">
+    </div>
+
+    <button type="button" id="toggleBuyPriceBtn" style="background:none;border:none;color:#A87C4F;font-size:12.5px;font-weight:700;padding:4px 0 14px;text-decoration:underline;">
+      ${hasBuyPrice ? 'تعديل سعر الشراء (اختياري)' : '+ إضافة سعر الشراء (اختياري)'}
+    </button>
+    <div class="field" id="buyPriceField" style="display:${hasBuyPrice?'block':'none'};">
+      <label>سعر الشراء (اختياري — لاستخدامك الخاص)</label>
+      <input type="number" id="editBuy" value="${item.buyPrice||''}" inputmode="decimal">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="deleteItemBtn" style="color:#A14E3C;">حذف السلعة</button>
+      <button class="btn-confirm" id="saveItemBtn">حفظ التعديلات</button>
+    </div>
+  `;
+  document.getElementById('toggleBuyPriceBtn').onclick = ()=>{
+    const f = document.getElementById('buyPriceField');
+    f.style.display = f.style.display==='none' ? 'block' : 'none';
+  };
+  document.getElementById('editQtyMinus').onclick = ()=>{
+    const inp = document.getElementById('editQty');
+    inp.value = Math.max(0, parseInt(inp.value||0)-1);
+  };
+  document.getElementById('editQtyPlus').onclick = ()=>{
+    const inp = document.getElementById('editQty');
+    inp.value = parseInt(inp.value||0)+1;
+  };
+  document.getElementById('saveItemBtn').onclick = async ()=>{
+    const name = document.getElementById('editName').value.trim();
+    if(!name){ toast('أدخل اسم السلعة', '⚠️'); return; }
+    item.name = name;
+    item.qty = Math.max(0, parseInt(document.getElementById('editQty').value)||0);
+    item.sellPrice = parseFloat(document.getElementById('editSell').value)||0;
+    const buyVal = document.getElementById('editBuy').value;
+    item.buyPrice = buyVal ? (parseFloat(buyVal)||0) : null;
+    await dbPut('items', item);
+    closeModal('modalDetail');
+    toast('تم حفظ التعديلات');
+    render();
+  };
+  document.getElementById('deleteItemBtn').onclick = ()=>{
+    closeModal('modalDetail');
+    showConfirm('حذف السلعة', `سيتم حذف "${item.name}" نهائيًا من المخزون. لن يتم حذف سجل المبيعات السابقة.`, async ()=>{
+      await dbDelete('items', item.id);
+      STATE.items = STATE.items.filter(i=>i.id!==item.id);
+      toast('تم حذف السلعة');
+      render();
+    });
+  };
+  openModal('modalDetail');
+}
+
+/* ---------- HISTORY TAB ---------- */
+function renderHistory(main){
+  let html = `<div class="search-bar">
+    <span class="ic">🔎</span>
+    <input type="text" id="histSearch" placeholder="بحث في السجل..." value="${escapeHtml(STATE.searchQuery)}">
+  </div>`;
+
+  let txs = [...STATE.transactions].sort((a,b)=> new Date(b.date)-new Date(a.date));
+  if(STATE.searchQuery){
+    txs = txs.filter(t=> t.itemName.toLowerCase().includes(STATE.searchQuery.toLowerCase()));
+  }
+
+  if(txs.length===0){
+    html += `<div class="empty-state">
+      <div class="ic">🧾</div>
+      <p>لا توجد عمليات مسجلة بعد.<br>كل عمليات الإضافة والبيع ستظهر هنا.</p>
+    </div>`;
+  } else {
+    let lastDay = null;
+    txs.forEach(t=>{
+      const dayKey = t.date.slice(0,10);
+      if(dayKey!==lastDay){
+        html += `<div class="day-label">${dayLabel(t.date)}</div>`;
+        lastDay = dayKey;
+      }
+      const isIn = t.type==='in';
+      const amountLabel = isIn ? `+${t.qty} وحدة` : `+${fmtPlain(t.qty*t.actualSellPrice)} د.م.`;
+      html += `
+      <div class="tx-row" data-id="${t.id}">
+        <div class="tx-dot ${isIn?'in':'out'}"></div>
+        <div class="tx-info">
+          <div class="tx-name">${escapeHtml(t.itemName)}</div>
+          <div class="tx-meta">${isIn?'إضافة للمخزون':'بيع'} · ${t.qty} وحدة · ${fmtTime(t.date)}</div>
+        </div>
+        <div class="tx-amount ${isIn?'':'profit'}" style="${isIn?'color:#8A7A63;':''}">${amountLabel}</div>
+        <button class="tx-del" data-del="${t.id}">✕</button>
+      </div>`;
+    });
+  }
+
+  main.innerHTML = html;
+  document.getElementById('histSearch').addEventListener('input', (e)=>{
+    STATE.searchQuery = e.target.value;
+    renderHistory(main);
+  });
+  main.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const txId = btn.dataset.del;
+      showConfirm('حذف العملية', 'سيتم حذف هذه العملية وعكس تأثيرها على المخزون. هل تريد الاستمرار؟', async ()=>{
+        await reverseAndDeleteTransaction(txId);
+      });
+    });
+  });
+}
+
+async function reverseAndDeleteTransaction(txId){
+  const t = STATE.transactions.find(x=>x.id===txId);
+  if(!t) return;
+  const item = STATE.items.find(i=>i.id===t.itemId);
+  if(item){
+    if(t.type==='in') item.qty = Math.max(0, item.qty - t.qty);
+    else item.qty = item.qty + t.qty;
+    await dbPut('items', item);
+  }
+  await dbDelete('transactions', txId);
+  STATE.transactions = STATE.transactions.filter(x=>x.id!==txId);
+  toast('تم حذف العملية');
+  render();
+}
+
+/* ---------- REPORT TAB ---------- */
+function getPeriodRange(period){
+  const now = new Date();
+  let start;
+  if(period==='today'){ start = new Date(now); start.setHours(0,0,0,0); }
+  else if(period==='week'){ start = new Date(now); start.setDate(start.getDate()-7); }
+  else if(period==='month'){ start = new Date(now); start.setMonth(start.getMonth()-1); }
+  else { start = new Date(0); }
+  return {start, end: now};
+}
+
+function renderReport(main){
+  const {start} = getPeriodRange(STATE.reportPeriod);
+  const periodTx = STATE.transactions.filter(t=> new Date(t.date) >= start);
+  const sales = periodTx.filter(t=>t.type==='sell');
+  const restocks = periodTx.filter(t=>t.type==='in');
+
+  const revenue = sales.reduce((s,t)=>s+t.qty*t.actualSellPrice,0);
+  const unitsSold = sales.reduce((s,t)=>s+t.qty,0);
+  const unitsAdded = restocks.reduce((s,t)=>s+t.qty,0);
+  const salesCount = sales.length;
+
+  // top selling items in period — ranked by revenue
+  const byItem = {};
+  sales.forEach(t=>{
+    if(!byItem[t.itemId]) byItem[t.itemId] = {name:t.itemName, qty:0, revenue:0};
+    byItem[t.itemId].qty += t.qty;
+    byItem[t.itemId].revenue += t.qty*t.actualSellPrice;
+  });
+  const topItems = Object.values(byItem).sort((a,b)=>b.revenue-a.revenue).slice(0,5);
+
+  const periodLabels = {today:'اليوم', week:'آخر 7 أيام', month:'آخر 30 يومًا', all:'كل الفترات'};
+
+  let html = `
+  <div class="report-period">
+    <button data-period="today" class="${STATE.reportPeriod==='today'?'active':''}">اليوم</button>
+    <button data-period="week" class="${STATE.reportPeriod==='week'?'active':''}">أسبوع</button>
+    <button data-period="month" class="${STATE.reportPeriod==='month'?'active':''}">شهر</button>
+    <button data-period="all" class="${STATE.reportPeriod==='all'?'active':''}">الكل</button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card profit full">
+      <div class="label">مجموع المبيعات · ${periodLabels[STATE.reportPeriod]}</div>
+      <div class="value">${fmt(revenue)}</div>
+    </div>
+    <div class="stat-card"><div class="label">عدد عمليات البيع</div><div class="value">${salesCount}</div></div>
+    <div class="stat-card"><div class="label">وحدات مباعة</div><div class="value">${unitsSold}</div></div>
+    <div class="stat-card full"><div class="label">وحدات أُضيفت للمخزون</div><div class="value">${unitsAdded}</div></div>
+  </div>
+  `;
+
+  if(topItems.length>0){
+    html += `<section class="block"><div class="block-title">الأكثر مبيعًا</div>`;
+    topItems.forEach((it,idx)=>{
+      html += `<div class="top-item-row">
+        <div class="rank">${idx+1}</div>
+        <div class="info"><div class="name">${escapeHtml(it.name)}</div><div class="sub">${it.qty} وحدة مباعة</div></div>
+        <div class="amt">${fmt(it.revenue)}</div>
+      </div>`;
+    });
+    html += `</section>`;
+  } else {
+    html += `<div class="empty-state"><div class="ic">📊</div><p>لا توجد مبيعات في هذه الفترة بعد</p></div>`;
+  }
+
+  html += `<button class="share-btn" id="shareReportBtn">📤 مشاركة التقرير عبر واتساب</button>`;
+
+  main.innerHTML = html;
+  main.querySelectorAll('.report-period button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      STATE.reportPeriod = btn.dataset.period;
+      renderReport(main);
+    });
+  });
+  document.getElementById('shareReportBtn').addEventListener('click', ()=>{
+    shareReportWhatsapp(periodLabels[STATE.reportPeriod], {revenue, salesCount, unitsSold, unitsAdded, topItems});
+  });
+}
+
+function shareReportWhatsapp(periodLabel, data){
+  let msg = `📊 *تقرير محل الأثاث*\n`;
+  msg += `🗓️ الفترة: ${periodLabel}\n`;
+  msg += `————————————\n`;
+  msg += `💰 مجموع المبيعات: ${fmt(data.revenue)}\n`;
+  msg += `🧾 عدد عمليات البيع: ${data.salesCount}\n`;
+  msg += `📈 وحدات مباعة: ${data.unitsSold}\n`;
+  msg += `📦 وحدات أُضيفت للمخزون: ${data.unitsAdded}\n`;
+  if(data.topItems.length>0){
+    msg += `————————————\n🏆 الأكثر مبيعًا:\n`;
+    data.topItems.forEach((it,idx)=>{
+      msg += `${idx+1}. ${it.name} — ${fmt(it.revenue)}\n`;
+    });
+  }
+  msg += `————————————\n📅 ${new Date().toLocaleDateString('ar-MA')}`;
+  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+
+/* ---------- SETTINGS TAB ---------- */
+function renderSettings(main){
+  const totalRevenue = STATE.transactions.filter(t=>t.type==='sell').reduce((s,t)=>s+t.qty*t.actualSellPrice,0);
+  main.innerHTML = `
+    <section class="block">
+      <div class="block-title">الأمان</div>
+      <div class="settings-row">
+        <div class="s-info"><div class="s-title">رمز القفل (PIN)</div><div class="s-sub">${STATE.pin? 'مفعّل — 4 أرقام':'غير مفعّل'}</div></div>
+        <button id="changePinBtn">${STATE.pin?'تغيير':'تفعيل'}</button>
+      </div>
+      ${STATE.pin ? `<div class="settings-row">
+        <div class="s-info"><div class="s-title">إلغاء القفل</div><div class="s-sub">إزالة رمز الحماية نهائيًا</div></div>
+        <button class="danger" id="removePinBtn">إزالة</button>
+      </div>` : ''}
+    </section>
+
+    <section class="block">
+      <div class="block-title">النسخ الاحتياطي</div>
+      <div class="settings-row">
+        <div class="s-info"><div class="s-title">تصدير نسخة احتياطية</div><div class="s-sub">حفظ جميع البيانات كملف JSON</div></div>
+        <button id="exportBtn">تصدير</button>
+      </div>
+      <div class="settings-row">
+        <div class="s-info"><div class="s-title">استيراد نسخة احتياطية</div><div class="s-sub">استرجاع البيانات من ملف محفوظ</div></div>
+        <button id="importBtn">استيراد</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;">
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-title">إحصائيات عامة</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">عدد السلع المسجلة</div><div class="value">${STATE.items.length}</div></div>
+        <div class="stat-card"><div class="label">إجمالي العمليات</div><div class="value">${STATE.transactions.length}</div></div>
+        <div class="stat-card profit full"><div class="label">إجمالي المبيعات منذ البداية</div><div class="value">${fmt(totalRevenue)}</div></div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-title">تثبيت التطبيق</div>
+      <div class="settings-row">
+        <div class="s-info"><div class="s-title">إضافة إلى الشاشة الرئيسية</div><div class="s-sub">للاستخدام كتطبيق مستقل بدون متصفح</div></div>
+        <button id="installBtn">تثبيت</button>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-title">منطقة الخطر</div>
+      <div class="settings-row">
+        <div class="s-info"><div class="s-title">حذف جميع البيانات</div><div class="s-sub">سيتم حذف كل السلع والعمليات نهائيًا</div></div>
+        <button class="danger" id="resetAllBtn">حذف الكل</button>
+      </div>
+    </section>
+  `;
+
+  document.getElementById('changePinBtn').onclick = ()=>{
+    if(STATE.pin) showLock('change-old');
+    else showLock('setup');
+  };
+  if(STATE.pin){
+    document.getElementById('removePinBtn').onclick = ()=>{
+      showConfirm('إزالة رمز القفل', 'سيصبح التطبيق غير محمي برمز. هل تريد الاستمرار؟', async ()=>{
+        STATE.pin = null;
+        await dbDelete('meta','pin');
+        toast('تم إزالة رمز القفل');
+        render();
+      });
+    };
+  }
+
+  document.getElementById('exportBtn').onclick = exportBackup;
+  document.getElementById('importBtn').onclick = ()=> document.getElementById('importFile').click();
+  document.getElementById('importFile').onchange = importBackup;
+  document.getElementById('installBtn').onclick = triggerInstall;
+  document.getElementById('resetAllBtn').onclick = ()=>{
+    showConfirm('حذف جميع البيانات', 'هذا الإجراء سيحذف كل السلع وكل سجل المبيعات نهائيًا ولا يمكن التراجع عنه.', async ()=>{
+      for(const item of STATE.items) await dbDelete('items', item.id);
+      for(const t of STATE.transactions) await dbDelete('transactions', t.id);
+      STATE.items = []; STATE.transactions = [];
+      toast('تم حذف جميع البيانات');
+      render();
+    });
+  };
+}
+
+function exportBackup(){
+  const data = {items:STATE.items, transactions:STATE.transactions, exportedAt:new Date().toISOString(), version:1};
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `نسخة-احتياطية-${todayStr()}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('تم تصدير النسخة الاحتياطية');
+}
+function importBackup(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!data.items || !data.transactions) throw new Error('بيانات غير صالحة');
+      showConfirm('استيراد البيانات', 'سيتم استبدال البيانات الحالية بالبيانات المستوردة. هل تريد الاستمرار؟', async ()=>{
+        for(const item of STATE.items) await dbDelete('items', item.id);
+        for(const t of STATE.transactions) await dbDelete('transactions', t.id);
+        for(const item of data.items) await dbPut('items', item);
+        for(const t of data.transactions) await dbPut('transactions', t);
+        STATE.items = data.items; STATE.transactions = data.transactions;
+        toast('تم استيراد البيانات بنجاح');
+        render();
+      });
+    }catch(err){
+      toast('ملف غير صالح', '⚠️');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+function triggerInstall(){
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+  } else {
+    toast('استخدم خيار "إضافة إلى الشاشة الرئيسية" من متصفحك', 'ℹ️');
+  }
+}
+
+/* ============================================================
+   MODALS — generic open/close
+   ============================================================ */
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-overlay').forEach(ov=>{
+  ov.addEventListener('click', (e)=>{ if(e.target===ov) closeModal(ov.id); });
+});
+
+let confirmCallback = null;
+function showConfirm(title, sub, cb){
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmSub').textContent = sub;
+  confirmCallback = cb;
+  openModal('modalConfirm');
+}
+document.getElementById('confirmCancelBtn').onclick = ()=> closeModal('modalConfirm');
+document.getElementById('confirmOkBtn').onclick = ()=>{
+  closeModal('modalConfirm');
+  if(confirmCallback) confirmCallback();
+};
+
+/* ---------- Add / Restock modal ---------- */
+document.getElementById('btnAddStock').addEventListener('click', ()=>{
+  document.getElementById('inpName').value = '';
+  document.getElementById('inpQty').value = 1;
+  document.getElementById('inpSell').value = '';
+  document.getElementById('addModalTitle').textContent = 'إضافة سلعة جديدة';
+  populateItemNamesList();
+  openModal('modalAdd');
+  setTimeout(()=>document.getElementById('inpName').focus(), 250);
+});
+document.getElementById('cancelAdd').onclick = ()=> closeModal('modalAdd');
+document.getElementById('qtyMinus').onclick = ()=>{
+  const inp = document.getElementById('inpQty');
+  inp.value = Math.max(0, parseInt(inp.value||0)-1);
+};
+document.getElementById('qtyPlus').onclick = ()=>{
+  const inp = document.getElementById('inpQty');
+  inp.value = parseInt(inp.value||0)+1;
+};
+
+function populateItemNamesList(){
+  const dl = document.getElementById('itemNamesList');
+  dl.innerHTML = STATE.items.map(i=>`<option value="${escapeHtml(i.name)}">`).join('');
+}
+
+document.getElementById('confirmAdd').addEventListener('click', async ()=>{
+  const name = document.getElementById('inpName').value.trim();
+  const qty = parseInt(document.getElementById('inpQty').value) || 0;
+  const sellPrice = parseFloat(document.getElementById('inpSell').value) || 0;
+
+  if(!name){ toast('أدخل اسم السلعة', '⚠️'); return; }
+  if(qty<=0){ toast('أدخل كمية صحيحة', '⚠️'); return; }
+
+  // check if item with same name exists -> restock
+  let item = STATE.items.find(i=>i.name.toLowerCase()===name.toLowerCase());
+  if(item){
+    item.qty += qty;
+    if(sellPrice>0) item.sellPrice = sellPrice;
+  } else {
+    item = {id:uid(), name, qty, buyPrice:null, sellPrice, createdAt:new Date().toISOString()};
+    STATE.items.push(item);
+  }
+  await dbPut('items', item);
+
+  const transaction = {
+    id:uid(), itemId:item.id, itemName:item.name, type:'in',
+    qty, date:new Date().toISOString()
+  };
+  await dbPut('transactions', transaction);
+  STATE.transactions.push(transaction);
+
+  closeModal('modalAdd');
+  toast(`تمت إضافة ${qty} وحدة من "${name}"`);
+  render();
+});
+
+/* ---------- Sell modal ---------- */
+document.getElementById('btnSell').addEventListener('click', ()=>{
+  if(STATE.items.filter(i=>i.qty>0).length===0){
+    toast('لا توجد سلع متوفرة للبيع', '⚠️');
+    return;
+  }
+  populateSellSelect();
+  openModal('modalSell');
+});
+document.getElementById('cancelSell').onclick = ()=> closeModal('modalSell');
+
+function populateSellSelect(){
+  const sel = document.getElementById('selSellItem');
+  const available = STATE.items.filter(i=>i.qty>0).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+  sel.innerHTML = available.map(i=>`<option value="${i.id}">${escapeHtml(i.name)} (متوفر: ${i.qty})</option>`).join('');
+  updateSellFormFromSelection();
+}
+document.getElementById('selSellItem').addEventListener('change', updateSellFormFromSelection);
+function updateSellFormFromSelection(){
+  const id = document.getElementById('selSellItem').value;
+  const item = STATE.items.find(i=>i.id===id);
+  if(!item) return;
+  document.getElementById('inpSellQty').value = 1;
+  document.getElementById('inpSellQty').max = item.qty;
+  document.getElementById('inpActualSellPrice').value = item.sellPrice;
+  updateProfitPreview();
+}
+document.getElementById('sellQtyMinus').onclick = ()=>{
+  const inp = document.getElementById('inpSellQty');
+  inp.value = Math.max(1, parseInt(inp.value||1)-1);
+  updateProfitPreview();
+};
+document.getElementById('sellQtyPlus').onclick = ()=>{
+  const item = STATE.items.find(i=>i.id===document.getElementById('selSellItem').value);
+  const inp = document.getElementById('inpSellQty');
+  const max = item ? item.qty : 999;
+  inp.value = Math.min(max, parseInt(inp.value||1)+1);
+  updateProfitPreview();
+};
+document.getElementById('inpSellQty').addEventListener('input', updateProfitPreview);
+document.getElementById('inpActualSellPrice').addEventListener('input', updateProfitPreview);
+
+function updateProfitPreview(){
+  const item = STATE.items.find(i=>i.id===document.getElementById('selSellItem').value);
+  if(!item) return;
+  const qty = parseInt(document.getElementById('inpSellQty').value)||0;
+  const actualPrice = parseFloat(document.getElementById('inpActualSellPrice').value)||0;
+  const total = actualPrice * qty;
+  const el = document.getElementById('profitPreviewVal');
+  el.textContent = fmt(total);
+}
+
+document.getElementById('confirmSell').addEventListener('click', async ()=>{
+  const itemId = document.getElementById('selSellItem').value;
+  const item = STATE.items.find(i=>i.id===itemId);
+  if(!item){ toast('اختر سلعة', '⚠️'); return; }
+  const qty = parseInt(document.getElementById('inpSellQty').value)||0;
+  const actualSellPrice = parseFloat(document.getElementById('inpActualSellPrice').value)||0;
+
+  if(qty<=0){ toast('أدخل كمية صحيحة', '⚠️'); return; }
+  if(qty>item.qty){ toast('الكمية المطلوبة أكبر من المتوفر', '⚠️'); return; }
+
+  item.qty -= qty;
+  await dbPut('items', item);
+
+  const transaction = {
+    id:uid(), itemId:item.id, itemName:item.name, type:'sell',
+    qty, actualSellPrice, buyPriceAtSale:item.buyPrice, date:new Date().toISOString()
+  };
+  await dbPut('transactions', transaction);
+  STATE.transactions.push(transaction);
+
+  closeModal('modalSell');
+  const total = actualSellPrice*qty;
+  toast(`تم بيع ${qty} وحدة — المجموع: ${fmt(total)}`, '💰');
+  render();
+
+  // Offer whatsapp receipt share
+  setTimeout(()=> offerSaleReceipt(item.name, qty, actualSellPrice, total), 600);
+});
+
+function offerSaleReceipt(name, qty, price, total){
+  let msg = `🧾 *فاتورة بيع*\n————————————\n`;
+  msg += `السلعة: ${name}\n`;
+  msg += `الكمية: ${qty}\n`;
+  msg += `السعر: ${fmt(price)} / وحدة\n`;
+  msg += `المجموع: *${fmt(total)}*\n`;
+  msg += `————————————\n📅 ${new Date().toLocaleDateString('ar-MA')} — ${new Date().toLocaleTimeString('ar-MA',{hour:'2-digit',minute:'2-digit'})}`;
+  const t = document.getElementById('toast');
+  t.innerHTML = `<span>📤</span><span>مشاركة الفاتورة عبر واتساب؟</span>`;
+  t.style.cursor = 'pointer';
+  t.onclick = ()=>{
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    t.classList.remove('show');
+    t.onclick = null;
+  };
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.classList.remove('show'); t.onclick=null; }, 4000);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+async function init(){
+  buildPinPad();
+  await openDB();
+  STATE.items = await dbGetAll('items');
+  STATE.transactions = await dbGetAll('transactions');
+  const pinRow = await dbGet('meta','pin');
+  STATE.pin = pinRow ? pinRow.value : null;
+
+  if(STATE.pin){
+    showLock('unlock');
+  } else {
+    document.getElementById('lockScreen').classList.add('hidden');
+    render();
+  }
+
+  // register service worker for offline + installability
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+}
+init();
+</script>
+</body>
+</html>
