@@ -1,0 +1,21 @@
+{
+  "name": "مخزن الأثاث",
+  "short_name": "مخزن الأثاث",
+  "description": "إدارة مخزون ومبيعات محل الأثاث",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E8DCC8",
+  "theme_color": "#3B2A1F",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
